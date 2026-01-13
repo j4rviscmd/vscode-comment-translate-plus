@@ -1,10 +1,30 @@
 import { Position, Range, TextDocument } from "vscode";
 import { IGrammar, StackElement } from "./TextMateService";
 import { getConfig } from "../configuration";
-import { checkScopeFunction, ICommentBlock, ICommentToken, ITokenState } from "../interface";
+import {
+    checkScopeFunction,
+    ICommentBlock,
+    ICommentToken,
+    ITokenState,
+} from "../interface";
 
 function findLeadingWhitespaceOrUnpairedIndex(str: string): number {
-    const unpairedSymbols = new Set(['*', '+', '-', '#', '?', '!', '|', '&', '~', '^', ',', '.', ':', ';']);
+    const unpairedSymbols = new Set([
+        "*",
+        "+",
+        "-",
+        "#",
+        "?",
+        "!",
+        "|",
+        "&",
+        "~",
+        "^",
+        ",",
+        ".",
+        ":",
+        ";",
+    ]);
     for (let i = 0; i < str.length; i++) {
         const char = str[i];
         if (!char.match(/\s/) && !unpairedSymbols.has(char)) {
@@ -17,64 +37,67 @@ function findLeadingWhitespaceOrUnpairedIndex(str: string): number {
 export function isComment(scopes: string[]) {
     //评论的token标记
     const arr = [
-        'punctuation.definition.comment',
-        'comment.block',
-        'comment.line'
+        "punctuation.definition.comment",
+        "comment.block",
+        "comment.line",
     ];
 
-    return scopes.some(scope => {
-        return arr.some(item => {
+    return scopes.some((scope) => {
+        return arr.some((item) => {
             return scope.indexOf(item) === 0;
         });
-    })
+    });
 }
 
 export function skipComment(scopes: string[]) {
-    return isBlank(scopes) || (scopes[0].indexOf('punctuation.whitespace.comment') === 0);
+    return (
+        isBlank(scopes) ||
+        scopes[0].indexOf("punctuation.whitespace.comment") === 0
+    );
     // return (scopes[0].indexOf('punctuation.whitespace.comment') === 0);
 }
 
 export function ignoreComment(scopes: string[]) {
-    if (scopes[0].indexOf('.jsdoc') >= 0) return true;
+    if (scopes[0].indexOf(".jsdoc") >= 0) return true;
 
-    return scopes[0].indexOf('punctuation.definition.comment') === 0;
+    return scopes[0].indexOf("punctuation.definition.comment") === 0;
 }
 
 function isString(scopes: string[]) {
     const scope = scopes[0];
     //字符串和转义字符的token标记
     const arr = [
-        'string.unquoted', // ymal等，无引号String
-        'string.interpolated',  // dart语言兼容
-        'string.quoted',
-        'punctuation.definition.string',
-        'constant.character.escape'
+        "string.unquoted", // ymal等，无引号String
+        "string.interpolated", // dart语言兼容
+        "string.quoted",
+        "punctuation.definition.string",
+        "constant.character.escape",
     ];
 
-    return arr.some(item => {
+    return arr.some((item) => {
         return scope.indexOf(item) === 0;
     });
 }
 
 function ignoreString(scopes: string[]) {
-    return scopes[0].indexOf('punctuation.definition.string') === 0;
+    return scopes[0].indexOf("punctuation.definition.string") === 0;
 }
 
 function isBlank(scopes: string[]) {
-    return scopes[0].indexOf('source') === 0;
+    return scopes[0].indexOf("source") === 0;
 }
 
 function isBase(scopes: string[]) {
     const scope = scopes[0];
     const arr = [
-        'entity',
-        'variable',
-        'support',
+        "entity",
+        "variable",
+        "support",
         // Object表达式支持
-        'meta.object-literal.key'
+        "meta.object-literal.key",
     ];
 
-    return arr.some(item => {
+    return arr.some((item) => {
         return scope.indexOf(item) === 0;
     });
 }
@@ -84,8 +107,11 @@ export class CommentParse {
     private _lines: ITokenState[] = [];
     public maxLineLength = 20000;
 
-    constructor(private _textDocument: TextDocument, private _grammar: IGrammar) {
-        this._model = _textDocument.getText().split('\n');
+    constructor(
+        private _textDocument: TextDocument,
+        private _grammar: IGrammar,
+    ) {
+        this._model = _textDocument.getText().split("\n");
     }
 
     private _parseTokensToLine(lineNumber: number): ITokenState[] {
@@ -96,18 +122,47 @@ export class CommentParse {
         }
         //重编译过的地方
         for (let i = lineLength; i <= lineNumber; i++) {
-
             if (this._model[i].length > this.maxLineLength) {
-                throw new Error(`Single-line text exceeds the limit of ${this.maxLineLength} characters`);
+                throw new Error(
+                    `Single-line text exceeds the limit of ${this.maxLineLength} characters`,
+                );
             }
 
-            const tokenizationResult = this._grammar.tokenizeLine(this._model[i], state);
-            this._lines.push({
-                startState: state,
-                tokens1: tokenizationResult.tokens,
-                endState: tokenizationResult.ruleStack
-            });
-            state = tokenizationResult.ruleStack;
+            try {
+                const tokenizationResult = this._grammar.tokenizeLine(
+                    this._model[i],
+                    state,
+                );
+                this._lines.push({
+                    startState: state,
+                    tokens1: tokenizationResult.tokens,
+                    endState: tokenizationResult.ruleStack,
+                });
+                state = tokenizationResult.ruleStack;
+            } catch (error) {
+                // Handle tokenization errors (e.g., unsupported regex patterns in grammar injections)
+                // This can occur with look-behind patterns that onigasm doesn't support
+                console.error(
+                    `[Comment Translate Plus] Tokenization error at line ${i}:`,
+                    error,
+                );
+
+                // Create a minimal token state for this line to allow processing to continue
+                // Treat the entire line as a single token with no specific scope
+                const fallbackToken: ITokenState = {
+                    startState: state,
+                    tokens1: [
+                        {
+                            startIndex: 0,
+                            endIndex: this._model[i].length,
+                            scopes: ["text.plain"],
+                        },
+                    ],
+                    endState: state,
+                };
+                this._lines.push(fallbackToken);
+                // Keep the previous state for the next line
+            }
         }
 
         return this._lines;
@@ -160,19 +215,28 @@ export class CommentParse {
         const { tokens1: tokens } = this._getTokensAtLine(line);
         const { startIndex, endIndex, scopes: prevScope } = tokens[index];
         const text = this._model[line].substring(startIndex, endIndex);
-        const scopes = prevScope.reduce<string[]>((s, item) => [item, ...s], []);
+        const scopes = prevScope.reduce<string[]>(
+            (s, item) => [item, ...s],
+            [],
+        );
 
         return {
             startIndex,
             endIndex,
             text,
-            scopes
-        }
+            scopes,
+        };
     }
 
-
-
-    public commentScopeParse(position: Position, checkHandle: checkScopeFunction, single: boolean = false, opts?: { skipHandle?: checkScopeFunction, ignoreHandle?: checkScopeFunction }): ICommentBlock {
+    public commentScopeParse(
+        position: Position,
+        checkHandle: checkScopeFunction,
+        single: boolean = false,
+        opts?: {
+            skipHandle?: checkScopeFunction;
+            ignoreHandle?: checkScopeFunction;
+        },
+    ): ICommentBlock {
         const { skipHandle } = opts || {};
         const { line: originLine } = position;
         const index = this._posOffsetTokens(position);
@@ -191,7 +255,10 @@ export class CommentParse {
                 // 空白行，如同skipHandle
             }
             for (; i >= 0; i--) {
-                const { scopes, startIndex: si } = this._posScopesParse(line, i);
+                const { scopes, startIndex: si } = this._posScopesParse(
+                    line,
+                    i,
+                );
 
                 if (checkHandle(scopes)) {
                     startIndex = si;
@@ -231,11 +298,7 @@ export class CommentParse {
             }
             if (i < tokens1.length || single || !skipEnable) break;
         }
-        const range = new Range(
-            startLine, startIndex,
-            endLine, endIndex
-        );
-
+        const range = new Range(startLine, startIndex, endLine, endIndex);
 
         let tokens = this._getCommentTokens(range, opts);
         let comment = this._textDocument.getText(range);
@@ -243,8 +306,8 @@ export class CommentParse {
         return {
             comment,
             range,
-            tokens
-        }
+            tokens,
+        };
     }
 
     /**
@@ -254,8 +317,13 @@ export class CommentParse {
      * @param opts
      * @returns
      */
-    private _getCommentTokens(range: Range, opts?: { skipHandle?: checkScopeFunction, ignoreHandle?: checkScopeFunction }): ICommentToken[] {
-
+    private _getCommentTokens(
+        range: Range,
+        opts?: {
+            skipHandle?: checkScopeFunction;
+            ignoreHandle?: checkScopeFunction;
+        },
+    ): ICommentToken[] {
         let startLine = range.start.line;
         let endLine = range.end.line;
         let tokens: ICommentToken[] = [];
@@ -276,7 +344,9 @@ export class CommentParse {
 
             if (line === endLine) {
                 // 结束位置，不是真实的位置。如字符串end
-                eIndex = this._posOffsetTokens(new Position(line, range.end.character - 1));
+                eIndex = this._posOffsetTokens(
+                    new Position(line, range.end.character - 1),
+                );
                 eTextIndex = range.end.character;
             }
 
@@ -286,9 +356,15 @@ export class CommentParse {
                 // 行首的忽略，包括空白符与注释符号
                 if (opts?.skipHandle && opts.skipHandle(res.scopes)) {
                     ignoreStart += res.text.length;
-                } else if (opts?.ignoreHandle && opts.ignoreHandle(res.scopes)) {
+                } else if (
+                    opts?.ignoreHandle &&
+                    opts.ignoreHandle(res.scopes)
+                ) {
                     ignoreStart += res.text.length;
-                } else if (findLeadingWhitespaceOrUnpairedIndex(res.text) === res.text.length) {
+                } else if (
+                    findLeadingWhitespaceOrUnpairedIndex(res.text) ===
+                    res.text.length
+                ) {
                     ignoreStart += res.text.length;
                 } else if (i === 0 && ignoreStart === 0) {
                     const match = res.text.match(/^\s+/);
@@ -311,14 +387,22 @@ export class CommentParse {
             tokens.push({
                 ignoreStart,
                 ignoreEnd,
-                text: this._model[line].substring(sTextIndex, eTextIndex)
+                text: this._model[line].substring(sTextIndex, eTextIndex),
             });
         }
 
         return tokens;
     }
 
-    public getAllCommentScope({ start, end }: { start?: Position, end?: Position } = {}, checkHandle: checkScopeFunction, single: boolean = false, opts?: { skipHandle?: checkScopeFunction, ignoreHandle?: checkScopeFunction }): ICommentBlock[] | null {
+    public getAllCommentScope(
+        { start, end }: { start?: Position; end?: Position } = {},
+        checkHandle: checkScopeFunction,
+        single: boolean = false,
+        opts?: {
+            skipHandle?: checkScopeFunction;
+            ignoreHandle?: checkScopeFunction;
+        },
+    ): ICommentBlock[] | null {
         // 遍历所以注释
         let blocks = [];
         let startLine = 0;
@@ -332,9 +416,17 @@ export class CommentParse {
         for (let line = startLine; line <= endLine; line += 1) {
             let { tokens1 } = this._getTokensAtLine(line);
             for (let index = 0; index < tokens1.length; index += 1) {
-                const { scopes, startIndex } = this._posScopesParse(line, index);
+                const { scopes, startIndex } = this._posScopesParse(
+                    line,
+                    index,
+                );
                 if (scopes && checkHandle(scopes)) {
-                    let block = this.commentScopeParse(new Position(line, startIndex + 1), checkHandle, single, opts);
+                    let block = this.commentScopeParse(
+                        new Position(line, startIndex + 1),
+                        checkHandle,
+                        single,
+                        opts,
+                    );
                     blocks.push(block);
                     line = block.range.end.line;
                     tokens1 = this._getTokensAtLine(line).tokens1;
@@ -345,38 +437,53 @@ export class CommentParse {
         return blocks;
     }
 
-    public computeAllText(type = 'comment', range: { start?: Position, end?: Position } = {}) {
-        if (type === 'text') {
-            return this.getAllCommentScope(range, isString, false, { ignoreHandle: ignoreString });
+    public computeAllText(
+        type = "comment",
+        range: { start?: Position; end?: Position } = {},
+    ) {
+        if (type === "text") {
+            return this.getAllCommentScope(range, isString, false, {
+                ignoreHandle: ignoreString,
+            });
         } else {
             return this.getAllCommentScope(range, isComment, false, {
-                ignoreHandle: ignoreComment, skipHandle: skipComment
+                ignoreHandle: ignoreComment,
+                skipHandle: skipComment,
             });
         }
     }
 
     public computeText(position: Position): ICommentBlock | null {
         const index = this._posOffsetTokens(position);
-        const { scopes, startIndex, endIndex, text } = this._posScopesParse(position.line, index);
-        const stringHover = getConfig<boolean>('hover.string');
-        const variableHover = getConfig<boolean>('hover.variable');
+        const { scopes, startIndex, endIndex, text } = this._posScopesParse(
+            position.line,
+            index,
+        );
+        const stringHover = getConfig<boolean>("hover.string");
+        const variableHover = getConfig<boolean>("hover.variable");
         if (scopes && isComment(scopes)) {
             return this.commentScopeParse(position, isComment, false, {
-                ignoreHandle: ignoreComment, skipHandle: skipComment
+                ignoreHandle: ignoreComment,
+                skipHandle: skipComment,
             });
         }
         //字符串中包含 \n 等， 需要在当前行，合并连续token
         if (stringHover && scopes && isString(scopes)) {
-            return this.commentScopeParse(position, isString, false, { ignoreHandle: ignoreString });
+            return this.commentScopeParse(position, isString, false, {
+                ignoreHandle: ignoreString,
+            });
         }
 
         if (variableHover && scopes && isBase(scopes)) {
-            const range = new Range(new Position(position.line, startIndex), new Position(position.line, endIndex));
+            const range = new Range(
+                new Position(position.line, startIndex),
+                new Position(position.line, endIndex),
+            );
 
             return {
                 comment: text,
-                range: range
-            }
+                range: range,
+            };
         }
 
         return null;
@@ -384,16 +491,22 @@ export class CommentParse {
 
     public getWordAtPosition(position: Position) {
         const index = this._posOffsetTokens(position);
-        const { scopes, startIndex, endIndex, text } = this._posScopesParse(position.line, index);
+        const { scopes, startIndex, endIndex, text } = this._posScopesParse(
+            position.line,
+            index,
+        );
 
         if (scopes && isBase(scopes)) {
-            const range = new Range(new Position(position.line, startIndex), new Position(position.line, endIndex - 1));
+            const range = new Range(
+                new Position(position.line, startIndex),
+                new Position(position.line, endIndex - 1),
+            );
 
             return {
                 comment: text,
                 scopes,
-                range: range
-            }
+                range: range,
+            };
         }
 
         return null;
