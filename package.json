@@ -1,21 +1,27 @@
 {
-    "name": "comment-translate",
-    "displayName": "%commentTranslate.displayName%",
-    "description": "%commentTranslate.description%",
-    "version": "3.0.0",
-    "publisher": "intellsmi",
+    "name": "comment-translate-plus",
+    "displayName": "Comment Translate Plus",
+    "description": "Enhanced fork with TypeScript/TSX support and future improvements",
+    "version": "1.0.0",
+    "publisher": "j4rviscmd",
     "author": {
-        "name": "Zheng MaoWei",
-        "email": "intellsmi@gmail.com"
+        "name": "j4rviscmd"
     },
-    "license": "SEE LICENSE IN LICENSE",
-    "homepage": "https://github.com/intellism/vscode-comment-translate/blob/master/README.md",
+    "contributors": [
+        {
+            "name": "intellism",
+            "url": "https://github.com/intellism",
+            "role": "original author"
+        }
+    ],
+    "license": "MIT",
+    "homepage": "https://github.com/j4rviscmd/comment-translate-plus#readme",
     "bugs": {
-        "url": "https://github.com/intellism/vscode-comment-translate/issues"
+        "url": "https://github.com/j4rviscmd/comment-translate-plus/issues"
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/intellism/vscode-comment-translate.git"
+        "url": "https://github.com/j4rviscmd/comment-translate-plus.git"
     },
     "engines": {
         "vscode": "^1.92.0"
@@ -42,24 +48,24 @@
     "main": "./dist/extension",
     "contributes": {
         "chatParticipants": [
-			{
-				"id": "intellism.translate",
-				"fullName": "Comment Translate",
-				"name": "translate",
-				"description": "I can help you translate into other languages.",
-				"isSticky": true,
-				"commands": [
-					{
-						"name": "word",
-						"description": "Key words explained in detail"
-					},
+            {
+                "id": "intellism.translate",
+                "fullName": "Comment Translate",
+                "name": "translate",
+                "description": "I can help you translate into other languages.",
+                "isSticky": true,
+                "commands": [
                     {
-						"name": "var",
-						"description": "Translate description to variable naming"
-					}
-				]
-			}
-		],
+                        "name": "word",
+                        "description": "Key words explained in detail"
+                    },
+                    {
+                        "name": "var",
+                        "description": "Translate description to variable naming"
+                    }
+                ]
+            }
+        ],
         "commands": [
             {
                 "command": "commentTranslate.select",
@@ -124,13 +130,13 @@
             {
                 "command": "commentTranslate.openDocumentBrowseMode",
                 "title": "%commentTranslate.command.openDocumentBrowseMode%",
-                "icon":"$(eye-closed)",
+                "icon": "$(eye-closed)",
                 "category": "Comment Translate"
             },
             {
                 "command": "commentTranslate.closeDocumentBrowseMode",
                 "title": "%commentTranslate.command.closeDocumentBrowseMode%",
-                "icon":"$(eye)",
+                "icon": "$(eye)",
                 "category": "Comment Translate"
             },
             {
@@ -139,7 +145,6 @@
                 "category": "Comment Translate"
             }
         ],
-
         "keybindings": [
             {
                 "command": "commentTranslate.select",
@@ -150,13 +155,13 @@
                 "command": "commentTranslate.nameVariable",
                 "key": "alt+shift+n",
                 "mac": "ctrl+shift+n",
-                "when":"resourceLangId in commentTranslate.canLanguages"
+                "when": "resourceLangId in commentTranslate.canLanguages"
             },
             {
                 "command": "commentTranslate.translateForCopilotChat",
                 "key": "alt+shift+y",
                 "mac": "ctrl+shift+y",
-                "when":"github.copilot.activated"
+                "when": "github.copilot.activated"
             },
             {
                 "command": "commentTranslate.replaceSelections",
@@ -182,29 +187,29 @@
             }
         ],
         "menus": {
-            "commandPalette":[
+            "commandPalette": [
                 {
                     "command": "commentTranslate.openDocumentBrowseMode",
-                    "when":"false"
+                    "when": "false"
                 },
                 {
                     "command": "commentTranslate.closeDocumentBrowseMode",
-                    "when":"false"
+                    "when": "false"
                 },
                 {
                     "command": "commentTranslate.translateForCopilotChat",
-                    "when":"github.copilot.activated"
+                    "when": "github.copilot.activated"
                 }
             ],
             "editor/title": [
                 {
                     "command": "commentTranslate.openDocumentBrowseMode",
-                    "when":"!commentTranslate.ultimatelyBrowseEnable && config.commentTranslate.hover.enabled && resourceLangId in commentTranslate.canLanguages",
+                    "when": "!commentTranslate.ultimatelyBrowseEnable && config.commentTranslate.hover.enabled && resourceLangId in commentTranslate.canLanguages",
                     "group": "navigation"
                 },
                 {
                     "command": "commentTranslate.closeDocumentBrowseMode",
-                    "when":"commentTranslate.ultimatelyBrowseEnable && config.commentTranslate.hover.enabled && resourceLangId in commentTranslate.canLanguages",
+                    "when": "commentTranslate.ultimatelyBrowseEnable && config.commentTranslate.hover.enabled && resourceLangId in commentTranslate.canLanguages",
                     "group": "navigation"
                 }
             ],
@@ -221,28 +226,32 @@
                 },
                 {
                     "command": "commentTranslate.nameVariable",
-                    "when":"resourceLangId in commentTranslate.canLanguages",
+                    "when": "resourceLangId in commentTranslate.canLanguages",
                     "group": "1_translate@2"
                 },
                 {
                     "command": "commentTranslate.translateForCopilotChat",
-                    "when":"github.copilot.activated",
+                    "when": "github.copilot.activated",
                     "group": "1_translate@3"
-                },{
+                },
+                {
                     "command": "commentTranslate.translateAllText",
-                    "when":"resourceLangId in commentTranslate.canLanguages",
+                    "when": "resourceLangId in commentTranslate.canLanguages",
                     "group": "2_file@1"
-                },{
+                },
+                {
                     "command": "commentTranslate.translateAllComment",
-                    "when":"resourceLangId in commentTranslate.canLanguages",
+                    "when": "resourceLangId in commentTranslate.canLanguages",
                     "group": "2_file@2"
-                },{
+                },
+                {
                     "command": "commentTranslate.selectAllText",
-                    "when":"resourceLangId in commentTranslate.canLanguages",
+                    "when": "resourceLangId in commentTranslate.canLanguages",
                     "group": "3_select@1"
-                },{
+                },
+                {
                     "command": "commentTranslate.selectAllComment",
-                    "when":"resourceLangId in commentTranslate.canLanguages",
+                    "when": "resourceLangId in commentTranslate.canLanguages",
                     "group": "3_select@2"
                 }
             ]
