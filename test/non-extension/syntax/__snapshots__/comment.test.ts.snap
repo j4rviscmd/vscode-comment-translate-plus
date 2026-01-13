@@ -24,7 +24,7 @@ exports[`Comment Documents should be compiled comment correctly:【function comm
       },
       {
         "ignoreEnd": 0,
-        "ignoreStart": 3,
+        "ignoreStart": 51,
         "text": "	 * Represents an event describing the change in a {@link TextEditor.options text editor's options}.",
       },
       {
@@ -56,7 +56,7 @@ exports[`Comment Documents should be compiled comment correctly:【function comm
       },
       {
         "ignoreEnd": 0,
-        "ignoreStart": 4,
+        "ignoreStart": 52,
         "text": "		 * The new value for the {@link TextEditor.options text editor's options}.",
       },
       {
@@ -82,12 +82,12 @@ exports[`Comment Documents should be compiled comment correctly:【function comm
   ],
   "texts": [
     "",
-    "Represents an event describing the change in a {@link TextEditor.options text editor's options}.",
+    "{@link TextEditor.options text editor's options}.",
     "",
   ],
   "translateLink": undefined,
   "translatedText": "/**
-	 * 表示描述{@link TextEditor.options文本编辑器的选项}中的更改的事件。
+	 * Represents an event describing the change in a 表示描述{@link TextEditor.options文本编辑器的选项}中的更改的事件。
 	 */",
 }
 `;
@@ -105,12 +105,12 @@ exports[`Comment Documents should be compiled comment correctly:【function comm
   ],
   "texts": [
     "",
-    "The new value for the {@link TextEditor.options text editor's options}.",
+    "text editor's options}.",
     "",
   ],
   "translateLink": undefined,
   "translatedText": "/**
-		 * {@link TextEditor.options文本编辑器的选项}的新值。
+		 * The new value for the {@link TextEditor.options {@link TextEditor.options文本编辑器的选项}的新值。
 		 */",
 }
 `;
@@ -222,12 +222,12 @@ exports[`Comment Documents should be compiled comment correctly:【head comment�
       },
       {
         "ignoreEnd": 0,
-        "ignoreStart": 2,
+        "ignoreStart": 1,
         "text": " * Type Definition for Visual Studio Code 1.68 Extension API",
       },
       {
         "ignoreEnd": 0,
-        "ignoreStart": 2,
+        "ignoreStart": 1,
         "text": " * See https://code.visualstudio.com/api for more information",
       },
       {
