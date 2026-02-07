@@ -2,6 +2,12 @@
 
 This is an enhanced fork of [vscode-comment-translate](https://github.com/intellism/vscode-comment-translate) by intellism.
 
+## Star this repo to keep me motivated ⭐
+
+I build this in my spare time. Every star shows that my work is valued and keeps me going!
+
+![Star](docs/images/star-github.gif)
+
 ## Improvements over the original
 
 - ✨ **Fixed**: TypeScript/TSX support in browse mode on local environments
