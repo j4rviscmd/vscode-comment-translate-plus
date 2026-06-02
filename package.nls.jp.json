@@ -25,5 +25,6 @@
     "commentTranslate.configuration.MultilineMerge": "コメント複数行マージ",
     "commentTranslate.configuration.browseEnabled": "コメント閲覧翻訳を有効にする",
     "commentTranslate.configuration.browseMode": "コメント閲覧モード",
-    "commentTranslate.configuration.maxTranslationLength": "最大翻訳長"
+    "commentTranslate.configuration.maxTranslationLength": "最大翻訳長",
+    "commentTranslate.configuration.showToolbar": "ホバーにツールバーを表示（置換、結合、選択追加、翻訳元変更ボタン）"
 }

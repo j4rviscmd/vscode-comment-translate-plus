@@ -761,6 +761,12 @@
                         "order": 23,
                         "description": "%commentTranslate.configuration.stringHover%"
                     },
+                    "commentTranslate.hover.showToolbar": {
+                        "type": "boolean",
+                        "default": true,
+                        "order": 28,
+                        "description": "%commentTranslate.configuration.showToolbar%"
+                    },
                     "commentTranslate.hover.enabled": {
                         "type": "boolean",
                         "default": true,
