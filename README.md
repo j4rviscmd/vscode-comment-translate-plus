@@ -96,6 +96,7 @@ Search `@tag:translateSource` in marketplace for more options. [Details](https:/
 - `commentTranslate.source` - Choose translation service
 - `commentTranslate.hover.enabled` - Toggle hover translation
 - `commentTranslate.hover.concise` - Ctrl/Cmd to trigger hover
+- `commentTranslate.hover.showToolbar` - Show toolbar in hover
 - `commentTranslate.browse.enabled` - Immersive browsing mode
 
 ## Support

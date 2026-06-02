@@ -19,11 +19,29 @@ import { compileMarkdown, getMarkdownTextValue } from "../syntax/marked";
 import { ICommentBlock } from "../interface";
 import { createComment } from "../syntax/Comment";
 
+/** Short-lived cache used to implement concise hover mode (Ctrl/Cmd-triggered translation). */
 export let shortLive = new ShortLive<string>((prev, curr) => prev === curr);
+
+/** Tracks the most recent hover range per document URI for external consumers. */
 let last: Map<string, Range> = new Map();
 
+/** Set of hover identifiers currently being processed, used to prevent recursive hover calls. */
 let working: Set<String> = new Set();
 
+/**
+ * Provides hover translation for comments, strings, and selected text regions.
+ *
+ * Attempts to locate a translatable block at the given position by checking:
+ * 1. Active editor text selections
+ * 2. Markdown document content
+ * 3. Language-specific comment blocks
+ *
+ * @param document - The text document being hovered over
+ * @param position - The cursor position within the document
+ * @param _token - Cancellation token (unused)
+ * @param canLanguages - List of language IDs that support comment extraction
+ * @returns A Hover containing the translated text, or null if nothing to translate
+ */
 async function commentProvideHover(
     document: TextDocument,
     position: Position,
@@ -96,11 +114,30 @@ async function commentProvideHover(
         showRange = range.intersection(nearRange) || showRange;
     }
 
-    const hover = new Hover([res.header, res.md], showRange);
+    const contents: MarkdownString[] = [];
+    if (res.header.value.length > 0) {
+        contents.push(res.header);
+    }
+    contents.push(res.md);
+    const hover = new Hover(contents, showRange);
     last.set(uri, range);
     return hover;
 }
 
+/**
+ * Provides hover translation for type language content by delegating to VS Code's
+ * built-in hover providers and translating their markdown output.
+ *
+ * Uses `vscode.executeHoverProvider` to gather native hover results, then translates
+ * each markdown content block. Results with no translatable text are filtered out.
+ * Uses the `working` set to prevent recursive calls from re-entering this provider.
+ *
+ * @param document - The text document being hovered over
+ * @param position - The cursor position within the document
+ * @param _token - Cancellation token (unused)
+ * @param canLanguages - List of language IDs that support type language hover
+ * @returns A Hover with translated type language content, or null if nothing to translate
+ */
 async function translateTypeLanguageProvideHover(
     document: TextDocument,
     position: Position,
@@ -173,6 +210,16 @@ async function translateTypeLanguageProvideHover(
     return null;
 }
 
+/**
+ * Provides hover translation for diagnostic messages (errors, warnings) at the given position.
+ *
+ * Retrieves all diagnostics for the document, filters those whose range contains the position,
+ * translates their messages, and formats them with the diagnostic source and code.
+ *
+ * @param document - The text document being hovered over
+ * @param position - The cursor position within the document
+ * @returns A Hover with translated diagnostic messages, or null if no diagnostics at position
+ */
 async function diagnosticsProvideHover(
     document: TextDocument,
     position: Position
@@ -227,10 +274,29 @@ async function diagnosticsProvideHover(
     return null;
 }
 
+/**
+ * Generates a unique identifier for a hover request based on document URI and position.
+ * Used to track in-progress hover requests and prevent recursive calls.
+ *
+ * @param document - The text document
+ * @param position - The cursor position
+ * @returns A string identifier in the format `{uri}-{line}-{character}`
+ */
 function getHoverId(document: TextDocument, position: Position) {
     return `${document.uri.toString()}-${position.line}-${position.character}`;
 }
 
+/**
+ * Registers the hover provider that supplies translated content for comments,
+ * type language hover results, and diagnostic messages.
+ *
+ * The provider runs all three hover strategies in parallel and merges their results.
+ * Guards against recursive invocations using the `working` set and respects the
+ * `hover.enabled` configuration setting.
+ *
+ * @param context - The extension context for managing the provider lifecycle
+ * @param canLanguages - List of language IDs that support comment/type translation
+ */
 export function registerHover(
     context: ExtensionContext,
     canLanguages: string[] = []
@@ -271,6 +337,14 @@ export function registerHover(
     context.subscriptions.push(hoverProviderDisposable);
 }
 
+/**
+ * Checks whether the active editor has a non-empty text selection that contains
+ * the given position, and returns it as a comment block for translation.
+ *
+ * @param url - The stringified URI of the document to match against the active editor
+ * @param position - The cursor position to check against selections
+ * @returns An ICommentBlock representing the selected text, or null if no matching selection
+ */
 function selectionContains(
     url: string,
     position: Position
@@ -294,10 +368,23 @@ function selectionContains(
     return null;
 }
 
+/**
+ * Returns the Range of the most recent hover result for the given document URI.
+ *
+ * @param uri - The stringified URI of the document
+ * @returns The Range of the last hover, or undefined if no hover recorded
+ */
 export function lastHover(uri: string) {
     return last.get(uri);
 }
 
+/**
+ * Merges multiple Hover results into a single Hover by concatenating their contents.
+ * Filters out null entries before merging.
+ *
+ * @param hovers - Variable number of Hover or null values to merge
+ * @returns A single Hover with all contents combined, or null if all inputs are null
+ */
 function mergeHovers(...hovers: (Hover | null)[]): Hover | null {
     const filteredHovers = hovers.filter((hover) => hover !== null) as Hover[];
     const firstHover = filteredHovers.shift();
@@ -311,6 +398,24 @@ function mergeHovers(...hovers: (Hover | null)[]): Hover | null {
 }
 
 
+/**
+ * Builds the markdown content for a hover tooltip, including an optional toolbar header
+ * with action commands (replace, combine, add selection, change source) and the translated
+ * text body formatted as a code block.
+ *
+ * When `hover.showToolbar` is enabled (default), the header contains clickable icons for
+ * common actions. The translated text is displayed in a fenced code block matching the
+ * document's language. If a humanized variable name is provided, it is shown alongside
+ * the translation.
+ *
+ * @param translatedText - The translated text to display
+ * @param humanizeText - Optional humanized variable name suggestion
+ * @param uri - The stringified URI of the source document
+ * @param range - The range object with start/end position information
+ * @param document - Object containing the language ID for syntax highlighting
+ * @param translateLink - Additional markdown link for the translation source
+ * @returns An object with `md` (body) and `header` (toolbar) MarkdownString values
+ */
 function createHoverMarkdownString(
     translatedText: string,
     humanizeText: string | undefined,
@@ -319,6 +424,8 @@ function createHoverMarkdownString(
     document: { languageId: string },
     translateLink: string
 ): { md: MarkdownString, header: MarkdownString } {
+    const showToolbar = getConfig<boolean>("hover.showToolbar");
+
     const base64TranslatedText = Buffer.from(translatedText).toString("base64");
     const space = "&nbsp;&nbsp;";
     const separator = `${space}|${space}`;
@@ -340,10 +447,10 @@ function createHoverMarkdownString(
 
     const translate = `[$(sync)](command:commentTranslate.changeTranslateSource "Change translate source")`;
 
-    const header = new MarkdownString(
-        `[Comment Translate]${space}${replace}${space}${combine}${space}${addSelection}${separator}${translate}${space}${translateLink}`,
-        true
-    );
+    const headerText = showToolbar !== false
+        ? `[Comment Translate]${space}${replace}${space}${combine}${space}${addSelection}${separator}${translate}${space}${translateLink}`
+        : "";
+    const header = new MarkdownString(headerText, true);
     header.isTrusted = true;
 
     let showText = translatedText;
