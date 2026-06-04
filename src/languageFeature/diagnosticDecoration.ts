@@ -10,6 +10,7 @@ import {
     TextEditor,
     Uri,
 } from 'vscode';
+import { ctx } from '../extension';
 import { getConfig, onConfigChange } from '../configuration';
 import { autoMutualTranslate } from '../translate/manager';
 import { debounce } from '../util/short-live';
@@ -53,6 +54,7 @@ class DiagnosticDecorationManager {
     private static readonly MAX_CACHE_SIZE = 500;
     private disposables: Disposable[] = [];
     private decorationType: TextEditorDecorationType;
+    private loadingDecorationType!: TextEditorDecorationType;
     /** Maps original message text to its translated equivalent. */
     private translationCache: Map<string, string> = new Map();
     private enabled: boolean;
@@ -65,7 +67,7 @@ class DiagnosticDecorationManager {
         this.decorationType = window.createTextEditorDecorationType({
             after: {
                 fontStyle: 'italic',
-                margin: '0 0 0 3em',
+                margin: '0 0 0 1.5em',
             },
             isWholeLine: true,
         });
@@ -81,6 +83,23 @@ class DiagnosticDecorationManager {
             DiagnosticDecorationManager.instance = new DiagnosticDecorationManager();
         }
         return DiagnosticDecorationManager.instance;
+    }
+
+    /**
+     * Lazily creates and returns the loading decoration type.
+     * Must be called after extension activation (ctx is available).
+     */
+    private getLoadingDecorationType(): TextEditorDecorationType {
+        if (!this.loadingDecorationType) {
+            this.loadingDecorationType = window.createTextEditorDecorationType({
+                after: {
+                    contentIconPath: ctx.asAbsolutePath('resources/icons/loading.svg'),
+                    margin: '0 0 0 1.5em',
+                },
+                isWholeLine: true,
+            });
+        }
+        return this.loadingDecorationType;
     }
 
     /**
@@ -164,8 +183,8 @@ class DiagnosticDecorationManager {
 
     /**
      * Core rendering pass. Collects diagnostics for the active editor,
-     * filters to visible ranges, groups by line, translates messages, and
-     * applies decorations. Guarded against concurrent execution.
+     * filters to visible ranges, groups by line, shows loading indicators,
+     * translates messages, and applies decorations. Guarded against concurrent execution.
      */
     private async renderDiagnostics(): Promise<void> {
         if (!this.enabled || this.isRendering) return;
@@ -190,18 +209,22 @@ class DiagnosticDecorationManager {
 
             const grouped = this.groupByLine(visibleDiagnostics);
 
+            // Show loading indicators immediately for lines needing translation
+            this.showLoadingDecorations(editor, grouped);
+
             const translatedGrouped = new Map<number, { severity: DiagnosticSeverity, messages: string[] }>();
             await Promise.all(
-                Array.from(grouped.entries()).map(([line, data]) =>
-                    Promise.all(data.messages.map(msg => this.translateMessage(msg))).then(translated => {
-                        const filtered = translated.filter(t => t.length > 0);
-                        if (filtered.length > 0) {
-                            translatedGrouped.set(line, { severity: data.severity, messages: filtered });
-                        }
-                    })
-                )
+                Array.from(grouped.entries()).map(async ([line, data]) => {
+                    const translated = await Promise.all(data.messages.map(msg => this.translateMessage(msg)));
+                    const filtered = translated.filter(t => t.length > 0);
+                    if (filtered.length > 0) {
+                        translatedGrouped.set(line, { severity: data.severity, messages: filtered });
+                    }
+                })
             );
 
+            // Clear loading and show translated decorations
+            editor.setDecorations(this.getLoadingDecorationType(), []);
             const options = this.buildDecorationOptions(translatedGrouped);
             editor.setDecorations(this.decorationType, options);
         } finally {
@@ -221,14 +244,9 @@ class DiagnosticDecorationManager {
         const visibleRanges = editor.visibleRanges;
         if (visibleRanges.length === 0) return [];
 
-        return diagnostics.filter(d => {
-            for (const vr of visibleRanges) {
-                if (d.range.intersection(vr)) {
-                    return true;
-                }
-            }
-            return false;
-        });
+        return diagnostics.filter(d =>
+            visibleRanges.some(vr => d.range.intersection(vr))
+        );
     }
 
     /**
@@ -246,8 +264,8 @@ class DiagnosticDecorationManager {
             const line = d.range.start.line;
             const message = this.truncateMessage(d.message);
 
-            if (grouped.has(line)) {
-                const entry = grouped.get(line)!;
+            const entry = grouped.get(line);
+            if (entry) {
                 entry.messages.push(message);
                 // Keep the worst severity (lower value = more severe)
                 if (d.severity < entry.severity) {
@@ -340,6 +358,28 @@ class DiagnosticDecorationManager {
      */
     private clearDecorations(): void {
         window.activeTextEditor?.setDecorations(this.decorationType, []);
+        window.activeTextEditor?.setDecorations(this.loadingDecorationType, []);
+    }
+
+    /**
+     * Shows loading indicator decorations on lines that have at least one
+     * uncached message. Lines where all messages are already cached are
+     * skipped so that cached results remain visible without flicker.
+     */
+    private showLoadingDecorations(
+        editor: TextEditor,
+        grouped: Map<number, { severity: DiagnosticSeverity, messages: string[] }>
+    ): void {
+        const loadingOptions: DecorationOptions[] = [];
+
+        for (const [line, data] of grouped) {
+            const needsTranslation = data.messages.some(msg => !this.translationCache.has(msg));
+            if (needsTranslation) {
+                loadingOptions.push({ range: new Range(line, 0, line, 0) });
+            }
+        }
+
+        editor.setDecorations(this.getLoadingDecorationType(), loadingOptions);
     }
 
     /**
@@ -350,6 +390,7 @@ class DiagnosticDecorationManager {
         clearTimeout(this.renderTimer);
         this.clearDecorations();
         this.decorationType.dispose();
+        this.loadingDecorationType?.dispose();
         this.disposables.forEach(d => d.dispose());
         this.disposables = [];
         this.translationCache.clear();
