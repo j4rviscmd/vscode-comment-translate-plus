@@ -773,6 +773,12 @@
                         "order": 21,
                         "description": "%commentTranslate.configuration.openHover%"
                     },
+                    "commentTranslate.diagnostic.enabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "order": 29,
+                        "description": "Show translated diagnostic messages as inline decorations."
+                    },
                     "commentTranslate.browse.enabled": {
                         "type": "boolean",
                         "default": false,

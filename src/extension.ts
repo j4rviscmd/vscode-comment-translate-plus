@@ -14,6 +14,7 @@ import { AliTranslate } from './plugin/translateAli';
 import { ITranslateRegistry } from 'comment-translate-manager';
 import { createComment } from './syntax/Comment';
 import { commentDecorationManager } from './languageFeature/decoration';
+import { diagnosticDecorationManager } from './languageFeature/diagnosticDecoration';
 import { getCanLanguageIds } from './util/ext';
 import { registerCompletion } from './languageFeature/completion';
 import { getUserLanguage, initTranslate } from './translate/manager';
@@ -42,6 +43,7 @@ export async function activate(context: ExtensionContext) {
     registerChatParticipant(context);
 
     context.subscriptions.push(...commentDecorationManager.showBrowseCommentTranslate(canLanguages));
+    context.subscriptions.push(...diagnosticDecorationManager.activate());
     // 注册状态图标
     let hoverBar = await showHoverStatusBar();
 

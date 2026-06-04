@@ -2,12 +2,6 @@
 
 This is an enhanced fork of [vscode-comment-translate](https://github.com/intellism/vscode-comment-translate) by intellism.
 
-## Star this repo to keep me motivated ⭐
-
-I build this in my spare time. Every star shows that my work is valued and keeps me going!
-
-![Star](docs/images/star-github.gif)
-
 ## Improvements over the original
 
 - ✨ **Fixed**: TypeScript/TSX support in browse mode on local environments
@@ -25,8 +19,6 @@ Thank you for creating the original extension!
 This is maintained as an independent project to provide faster bug fixes and continuous improvements to the community while respecting the original work.
 
 ---
-
-![Licence](https://img.shields.io/github/license/j4rviscmd/comment-translate-plus.svg)
 
 Translate comments, strings, and code directly in VSCode. Supports multiple translation services.
 
@@ -62,6 +54,10 @@ One-click translation for strings, comments, and selections.
 
 ![replace](./doc/image/replace.png)
 
+### Diagnostic Translation
+
+Inline translated diagnostic messages (errors, warnings) at the end of each line — similar to ErrorLens, but translated.
+
 ### GitHub Copilot Chat: @translate
 
 > Requires GitHub Copilot Chat extension
@@ -72,13 +68,13 @@ Translate using Copilot AI in Chat box.
 
 ## Shortcuts
 
-| Command | Shortcut |
-|---------|----------|
+| Command                      | Shortcut       |
+| ---------------------------- | -------------- |
 | Toggle immersive translation | `Ctrl+Shift+Z` |
-| Toggle display mode | `Ctrl+Shift+B` |
-| Variable naming | `Ctrl+Shift+N` |
-| Translate & replace | `Ctrl+Shift+T` |
-| Copilot quick translate | `Ctrl+Shift+Y` |
+| Toggle display mode          | `Ctrl+Shift+B` |
+| Variable naming              | `Ctrl+Shift+N` |
+| Translate & replace          | `Ctrl+Shift+T` |
+| Copilot quick translate      | `Ctrl+Shift+Y` |
 
 > View all commands: Mac `Ctrl+Shift+?` / Windows `Alt+Shift+?`
 
@@ -98,10 +94,7 @@ Search `@tag:translateSource` in marketplace for more options. [Details](https:/
 - `commentTranslate.hover.concise` - Ctrl/Cmd to trigger hover
 - `commentTranslate.hover.showToolbar` - Show toolbar in hover
 - `commentTranslate.browse.enabled` - Immersive browsing mode
-
-## Support
-
-⭐ [Star on GitHub](https://github.com/j4rviscmd/comment-translate-plus) · 💬 Submit feedback · 🔗 Share with others
+- `commentTranslate.diagnostic.enabled` - Show translated diagnostic messages inline (default: `true`)
 
 ## License
 
