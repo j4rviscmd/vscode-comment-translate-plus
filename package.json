@@ -2,7 +2,7 @@
     "name": "comment-translate-plus",
     "displayName": "Comment Translate Plus",
     "description": "Enhanced fork with TypeScript/TSX support and future improvements",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "publisher": "j4rviscmd",
     "author": {
         "name": "j4rviscmd"
